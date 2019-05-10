@@ -33,6 +33,46 @@ exports.init = function() {
     return Promise.resolve(amqpConn);
 }
 
+const googleTask = require('../tasks/auth-google.task.js');
+const authConsumer = require('./consumers/auth.consumers.js');
+
+exports.consume = function(channel, queue) {
+    try {
+      conChannel = channel
+      conChannel.consume(queue, (msg) => {
+
+        ///////////////////////////////////////////////////////////////////
+        //TODO: Check for which type of auth. Now only google.
+        //TODO: This flow needs to be clear: API vs messaging. Both should be possible
+
+        //This is for testing
+        var res = googleTask.authenticate(msg)
+        res = googleTask.callback(res)
+        if(res){
+          authConsumer.onSuccessfulAuth(res);
+        }
+        
+        ///////////////////////////////////////////////////////////////////
+        
+        //TODO: Error handling
+      })
+    } catch (e) {
+      console.error("[AMQP] consume", e.message);
+    }
+  }
+
+  exports.reply = function(channel, msg){
+    
+    //content = new Buffer(JSON.stringify(msg.content))
+    content = msg.content
+    channel.sendToQueue(msg.properties.replyTo, content, {
+      correlationId: msg.properties.correlationId
+    });
+    //console.log("reply complete")
+    //Acknowledge the job done with the message.
+    channel.ack(msg);
+  }
+
 /*
 var pubChannel = null;
 var offlinePubQueue = [];
@@ -66,30 +106,3 @@ startPublisher = function (amqpConn) {
 
 */
 
-const google = require('../api/controllers/google.controller.js');
-
-exports.consume = function(channel, queue) {
-    try {
-      conChannel = channel
-      conChannel.consume(queue, (msg) => {
-        //TODO: Check for which type of auth. Now only google.
-        console.log(msg)
-        google.authenticate(msg, {})
-        
-        //TODO: Error handling
-      })
-    } catch (e) {
-      console.error("[AMQP] publish", e.message);
-    }
-  }
-
-  exports.reply = function(channel, msg){
-    
-    content = new Buffer(JSON.stringify(msg.fields))
-    channel.sendToQueue(msg.properties.replyTo, content, {
-      correlationId: msg.properties.correlationId
-    });
-    console.log("reply complete")
-    //Acknowledge the job done with the message.
-    channel.ack(msg);
-  }

@@ -37,6 +37,6 @@ amqpConn.then(function(conn){
     global.amqpChannel = ch
     ch.checkQueue(rabbitmqConfig.authQueue).then(function(ok) {
         comms.consume(ch, rabbitmqConfig.authQueue)
-        console.log("Queue exists")
+        console.log("Queue consumer setup")
     });
 }).catch(console.warn);
